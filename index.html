@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel de CS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: lista de carteira em tabela; clicar na linha abre a ficha em painel lateral; clicar na flag abre menu de edição. */
+:root {
+  --bg: #F7F5F6; --surface: #FFFFFF; --surface-2: #F3EFF1; --line: #E6DEE2;
+  --fg: #1E1520; --muted: #6F6370;
+  --accent: #8B174B; --accent-d: #4A1944; --accent-soft: #F8E6EE; --on-accent: #FFFFFF;
+  --ok-bg: #DCFCE7; --ok-fg: #14532D; --ok-dot: #16A34A;
+  --warn-bg: #FEF3C7; --warn-fg: #78350F; --warn-dot: #F59E0B;
+  --bad-bg: #FEE2E2; --bad-fg: #7F1D1D; --bad-dot: #DC2626;
+  --neu-bg: #E8E5E9; --neu-fg: #3B3340; --neu-dot: #9A909B;
+  --vio-bg: #EDE9FE; --vio-fg: #4C1D95; --blu-bg: #DBEAFE; --blu-fg: #1E3A8A;
+  --crit-row: #FDF4F6; --shadow: 0 12px 32px rgba(40, 10, 30, .18);
+  --font: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #150C16; --surface: #1F1521; --surface-2: #2A1D2D; --line: #3A2B3D;
+    --fg: #F4ECF3; --muted: #A596A8;
+    --accent: #D0568F; --accent-d: #E7A1C3; --accent-soft: #3A1B2E; --on-accent: #1A0A14;
+    --ok-bg: #12351F; --ok-fg: #A7F3C0; --warn-bg: #40300C; --warn-fg: #FDE68A; --bad-bg: #47161A; --bad-fg: #FECACA;
+    --neu-bg: #332A36; --neu-fg: #D8CEDB; --vio-bg: #2E2150; --vio-fg: #D9CCFF; --blu-bg: #17284D; --blu-fg: #BFD6FF;
+    --crit-row: #2A151D; --shadow: 0 12px 32px rgba(0, 0, 0, .55); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #150C16; --surface: #1F1521; --surface-2: #2A1D2D; --line: #3A2B3D;
+  --fg: #F4ECF3; --muted: #A596A8;
+  --accent: #D0568F; --accent-d: #E7A1C3; --accent-soft: #3A1B2E; --on-accent: #1A0A14;
+  --ok-bg: #12351F; --ok-fg: #A7F3C0; --warn-bg: #40300C; --warn-fg: #FDE68A; --bad-bg: #47161A; --bad-fg: #FECACA;
+  --neu-bg: #332A36; --neu-fg: #D8CEDB; --vio-bg: #2E2150; --vio-fg: #D9CCFF; --blu-bg: #17284D; --blu-fg: #BFD6FF;
+  --crit-row: #2A151D; --shadow: 0 12px 32px rgba(0, 0, 0, .55); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.45; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, tr:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 40px; }
+header.top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+header.top img { width: 30px; height: auto; }
+header.top h1 { font-size: 20px; margin: 0; font-weight: 800; letter-spacing: -.01em; }
+header.top .tag { margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); padding: 4px 10px; border-radius: 99px; }
+.hint { display: flex; gap: 8px 18px; flex-wrap: wrap; color: var(--muted); font-size: 12.5px; margin: 0 0 14px; }
+.hint b { color: var(--fg); font-weight: 700; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px 14px 10px; }
+.toolbar h2 { font-size: 14px; margin: 0 10px 0 0; font-weight: 800; }
+.fchip { border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 4px 11px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+.fchip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-d); }
+.fchip i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.bar { display: flex; height: 6px; margin: 0 14px 12px; border-radius: 3px; overflow: hidden; background: var(--surface-2); }
+.bar span { display: block; transition: width .25s; }
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 860px; }
+th { text-align: left; font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 8px 12px; background: var(--surface-2); white-space: nowrap; }
+td { padding: 10px 12px; border-top: 1px solid var(--line); vertical-align: middle; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--surface-2); }
+tbody tr.crit { background: var(--crit-row); }
+tbody tr.sel { background: var(--accent-soft); }
+td:first-child { box-shadow: inset 4px 0 0 var(--stripe, transparent); }
+.who { display: flex; align-items: center; gap: 10px; min-width: 150px; }
+.av { width: 28px; height: 28px; border-radius: 50%; color: #fff; font-weight: 800; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; flex: none; border: 2px solid var(--surface); }
+.av.sm { width: 22px; height: 22px; font-size: 9px; }
+.stack .av + .av { margin-left: -7px; }
+.nm { font-weight: 700; display: block; }
+.sub { font-size: 11.5px; color: var(--muted); }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 99px; padding: 4px 8px 4px 9px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.chip .d { width: 7px; height: 7px; border-radius: 50%; }
+.chip .c { width: 0; height: 0; border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; border-top: 4.5px solid currentColor; opacity: .55; margin-left: 2px; }
+.chip:hover { filter: brightness(.96); box-shadow: 0 0 0 2px var(--line); }
+.ok { background: var(--ok-bg); color: var(--ok-fg); } .ok .d { background: var(--ok-dot); }
+.warn { background: var(--warn-bg); color: var(--warn-fg); } .warn .d { background: var(--warn-dot); }
+.bad { background: var(--bad-bg); color: var(--bad-fg); } .bad .d { background: var(--bad-dot); }
+.neu { background: var(--neu-bg); color: var(--neu-fg); } .neu .d { background: var(--neu-dot); }
+.respbtn { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 3px 6px 3px 2px; border-radius: 99px; }
+.respbtn:hover { box-shadow: 0 0 0 2px var(--line); }
+.respbtn .cc { width: 0; height: 0; border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; border-top: 4.5px solid var(--muted); opacity: .8; }
+.acao { max-width: 220px; }
+.due { font-size: 11.5px; color: var(--muted); }
+.due.today { color: var(--warn-fg); font-weight: 700; }
+.due.late { color: var(--bad-fg); font-weight: 700; }
+/* popover */
+.pop { position: fixed; z-index: 60; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); width: 236px; padding: 6px; }
+.pop h4 { margin: 4px 8px 6px; font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.pop .opt { display: flex; width: 100%; align-items: center; gap: 8px; border: 0; background: none; padding: 7px 8px; border-radius: 7px; text-align: left; font-weight: 600; }
+.pop .opt:hover { background: var(--surface-2); }
+.pop .opt .d { width: 8px; height: 8px; border-radius: 50%; }
+.pop .opt .ck { margin-left: auto; color: var(--muted); font-size: 12px; }
+.pop .why { padding: 4px 6px 6px; display: grid; gap: 8px; }
+.pop .why label { font-size: 12px; color: var(--muted); }
+.pop textarea, .composer textarea, .composer input, .why input { width: 100%; font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.pop textarea { min-height: 62px; resize: vertical; }
+.row-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 7px 14px; font-weight: 700; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+/* drawer */
+.scrim { position: fixed; inset: 0; background: rgba(20, 5, 15, .35); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 40; }
+.scrim.on { opacity: 1; pointer-events: auto; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100%); background: var(--surface); border-left: 1px solid var(--line); box-shadow: var(--shadow); z-index: 50; display: flex; flex-direction: column; transform: translateX(104%); transition: transform .24s ease; padding-top: env(safe-area-inset-top, 0px); }
+.drawer.on { transform: none; }
+.dh { display: flex; align-items: center; gap: 12px; padding: 16px 18px 12px; }
+.dh .av { width: 40px; height: 40px; font-size: 15px; }
+.dh h3 { margin: 0; font-size: 17px; font-weight: 800; }
+.dh .x { margin-left: auto; border: 0; background: var(--surface-2); width: 32px; height: 32px; border-radius: 50%; font-size: 18px; line-height: 1; }
+.strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; padding: 4px 18px 10px; }
+.strip label { display: block; font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 3px; }
+.editnote { padding: 0 18px 10px; font-size: 12px; color: var(--muted); }
+.tabs { display: flex; gap: 4px; padding: 0 14px; border-bottom: 1px solid var(--line); }
+.tab { border: 0; background: none; padding: 10px 8px; font-weight: 700; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tab[aria-selected="true"] { color: var(--accent-d); border-bottom-color: var(--accent); }
+.tab .n { background: var(--accent); color: var(--on-accent); border-radius: 99px; font-size: 10.5px; padding: 1px 6px; margin-left: 4px; }
+.dbody { flex: 1; overflow-y: auto; padding: 14px 18px calc(24px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 16px; align-content: start; }
+.composer { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 10px; }
+.composer textarea { min-height: 76px; resize: vertical; }
+.types { display: flex; gap: 6px; flex-wrap: wrap; }
+.type { border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 3px 11px; font-size: 12px; font-weight: 600; }
+.type[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) 140px; gap: 8px; }
+.composer .foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.composer .foot .hintx { font-size: 12px; color: var(--muted); flex: 1 1 160px; min-width: 0; }
+.tl-head { display: flex; align-items: baseline; justify-content: space-between; }
+.tl-head h4 { margin: 0; font-size: 14px; font-weight: 800; }
+.tl-head span { font-size: 12px; color: var(--muted); }
+.notes { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.note { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; }
+.note .meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.note .meta b { color: var(--fg); font-size: 12.5px; }
+.note p { margin: 4px 0 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+.tag.alert { background: var(--bad-bg); color: var(--bad-fg); }
+.tag.meet { background: var(--blu-bg); color: var(--blu-fg); }
+.tag.call { background: var(--neu-bg); color: var(--neu-fg); }
+.tag.dec { background: var(--ok-bg); color: var(--ok-fg); }
+.tag.int { background: var(--warn-bg); color: var(--warn-fg); }
+.tag.pin { background: var(--vio-bg); color: var(--vio-fg); }
+.pinbtn { margin-left: auto; border: 0; background: none; font-size: 12px; color: var(--muted); text-decoration: underline; padding: 0; }
+.hist { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.hist li { display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: 10px; }
+.hist li::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-top: 6px; }
+.hist small { color: var(--muted); display: block; }
+.kv { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 8px 12px; margin: 0; }
+.kv dt { color: var(--muted); font-size: 12.5px; } .kv dd { margin: 0; font-weight: 600; }
+.alert-hint { background: var(--bad-bg); color: var(--bad-fg); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.alert-hint button { margin-left: auto; }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); background: var(--fg); color: var(--bg); padding: 9px 16px; border-radius: 99px; font-weight: 600; font-size: 13px; opacity: 0; pointer-events: none; transition: .2s; z-index: 80; max-width: calc(100% - 32px); }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+@media (max-width: 520px) { .strip { grid-template-columns: 1fr 1fr; } .two { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <img alt="" src="data:image/png;base64,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">
+    <h1>Painel de CS</h1>
+    <span class="tag">Protótipo · dados fictícios</span>
+  </header>
+  <p class="hint">
+    <span><b>Clique na flag</b> (ou em qualquer chip, ou nos responsáveis) para alterar. O CS edita direto na lista.</span>
+    <span><b>Clique na linha</b> do cliente para abrir a ficha com as anotações.</span>
+  </p>
+
+  <section class="panel" aria-label="Carteira de clientes">
+    <div class="toolbar" id="toolbar"></div>
+    <div class="bar" id="bar" aria-hidden="true"></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Cliente</th><th>Saúde</th><th>Resultado</th><th>Relacionamento</th><th>Financeiro</th><th>Próxima ação</th><th>Resp.</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Ficha do cliente" aria-hidden="true"></aside>
+<div class="pop" id="pop" hidden></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  var OPTS = {
+    saude: { label: "Saúde da conta", list: [["Controlado", "ok"], ["Atenção", "warn"], ["Crítico", "bad"]] },
+    resultado: { label: "Resultado", list: [["Bom", "ok"], ["Regular", "warn"], ["Ruim", "bad"], ["Sem dados", "neu"]] },
+    relac: { label: "Relacionamento", list: [["Estável", "ok"], ["Atenção", "warn"], ["Abalado", "bad"]] },
+    fin: { label: "Financeiro", list: [["Adimplente", "ok"], ["Em negociação", "warn"], ["Inadimplente", "bad"], ["A confirmar", "neu"]] },
+    resp: { label: "Responsável CS" }
+  };
+  var TYPES = [["Reunião ou ligação", "meet"], ["Anotações", "call"]];
+  var AVC = ["#8B174B", "#6D3A8C", "#B45309", "#2563EB", "#BE185D"];
+  var ME = "RS"; var TEAM = [["LM", "Larissa M."], ["JP", "João P."], ["RS", "Rita S."]];
+  var T0 = new Date(); T0.setHours(12, 0, 0, 0);
+  function day(n, h, m) { var d = new Date(T0); d.setDate(d.getDate() + n); d.setHours(h == null ? 12 : h, m || 0, 0, 0); return d; }
+  var nid = 100;
+  function N(au, when, tipo, text, pinned) { return { id: nid++, au: au, when: when, tipo: tipo, text: text, pinned: !!pinned }; }
+
+  var clients = [
+    { id: "014", name: "Aurora Moda", seg: "Moda", saude: "Controlado", resultado: "Bom", relac: "Estável", fin: "Adimplente", acao: "Enviar relatório mensal", prazo: day(4), resp: ["LM", "JP"],
+      notes: [N("LM", day(-3, 15, 10), "Reunião ou ligação", "Cliente aprovou a campanha de primavera e pediu mais vídeos de produto.")], hist: [] },
+    { id: "022", name: "Casa Linho", seg: "Moda", saude: "Controlado", resultado: "Regular", relac: "Estável", fin: "Adimplente", acao: "Alinhar coleção de primavera", prazo: day(6), resp: ["JP", "RS"],
+      notes: [N("JP", day(-5, 11, 0), "Reunião ou ligação", "Coleção nova chega no fim do mês. Combinamos revisar a oferta antes de subir os anúncios.")], hist: [] },
+    { id: "027", name: "Rocha Vendas", seg: "Representante", saude: "Atenção", resultado: "Sem dados", relac: "Estável", fin: "A confirmar", acao: "Validar rastreio de leads", prazo: day(0), resp: ["LM", "RS"],
+      notes: [N("LM", day(-1, 16, 40), "Anotações", "Rastreamento de leads ainda não confirmado. Falta o acesso ao WhatsApp da loja.")], hist: [] },
+    { id: "031", name: "Studio Mar", seg: "Moda", saude: "Atenção", resultado: "Regular", relac: "Atenção", fin: "Em negociação", acao: "Reunião de alinhamento", prazo: day(-1), resp: ["RS", "JP"],
+      notes: [N("RS", day(-6, 9, 30), "Reunião ou ligação", "Cliente pediu desconto na mensalidade e quer rever resultados do mês.")], hist: [] },
+    { id: "035", name: "Mendes Vendas", seg: "Representante", saude: "Crítico", resultado: "Ruim", relac: "Abalado", fin: "Inadimplente", acao: "Abrir plano de reversão", prazo: day(0), resp: ["RS", "LM"],
+      notes: [
+        N("RS", day(0, 10, 32), "Reunião ou ligação", "Cliente comentou que pensa em encerrar se as vendas não melhorarem neste mês. Abrir plano de reversão.", true),
+        N("LM", day(-8, 14, 0), "Reunião ou ligação", "Alinhado com o gestor de tráfego: revisar oferta e atendimento aos leads antes da próxima semana."),
+        N("RS", day(-12, 10, 15), "Reunião ou ligação", "Relatou poucas vendas. O estoque da coleção nova chega em 15/10.")],
+      hist: [] },
+    { id: "040", name: "Vila Trama", seg: "Moda", saude: "Controlado", resultado: "Bom", relac: "Estável", fin: "Adimplente", acao: "Pedir depoimento", prazo: day(10), resp: ["JP", "LM"],
+      notes: [N("JP", day(-4, 17, 5), "Anotações", "Cliente topou gravar um depoimento depois da campanha de Dia das Crianças.")], hist: [] }
+  ];
+
+  var filter = "Todos", openId = null, tab = "notas", draft = { tipo: "Reunião ou ligação", text: "", acao: "", prazo: "" };
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function fd(d) { return pad(d.getDate()) + "/" + pad(d.getMonth() + 1); }
+  function sameDay(a, b) { return a.toDateString() === b.toDateString(); }
+  function fw(d) { return sameDay(d, new Date()) ? "hoje, " + pad(d.getHours()) + ":" + pad(d.getMinutes()) : fd(d); }
+  function kind(field, v) { var l = OPTS[field].list; for (var i = 0; i < l.length; i++) if (l[i][0] === v) return l[i][1]; return "neu"; }
+  function byId(id) { return clients.filter(function (c) { return c.id === id; })[0]; }
+  function toast(t) { var el = $("toast"); el.textContent = t; el.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(function () { el.classList.remove("on"); }, 2200); }
+  function dueHtml(d) {
+    var now = new Date(); now.setHours(12, 0, 0, 0); var diff = Math.round((d - now) / 864e5);
+    if (diff === 0) return '<span class="due today">Hoje</span>';
+    if (diff < 0) return '<span class="due late">Atrasada · ' + fd(d) + '</span>';
+    return '<span class="due">' + fd(d) + '</span>';
+  }
+  function chipBtn(c, field) {
+    var v = c[field];
+    return '<button type="button" class="chip ' + kind(field, v) + '" data-picker="' + field + '" data-id="' + c.id + '" aria-haspopup="listbox" aria-label="' + OPTS[field].label + ': ' + v + '. Alterar"><span class="d"></span>' + v + '<span class="c"></span></button>';
+  }
+  function avs(list, cls) { return list.map(function (a, i) { return '<span class="av ' + (cls || "") + '" style="background:' + AVC[(a.charCodeAt(0) + i) % 5] + '">' + a + '</span>'; }).join(""); }
+  function respBtn(c) {
+    return '<button type="button" class="respbtn" data-picker="resp" data-id="' + c.id + '" aria-haspopup="listbox" aria-label="Responsável CS: ' + c.resp.join(", ") + '. Alterar"><span class="stack">' + avs(c.resp, "sm") + '</span><span class="cc"></span></button>';
+  }
+  function respPopHtml(c) {
+    return '<h4>Responsáveis do CS</h4>' + TEAM.map(function (m) {
+      return '<button type="button" class="opt" data-resp="' + m[0] + '" role="option" aria-selected="' + (c.resp.indexOf(m[0]) > -1) + '"><span class="av sm" style="background:' + AVC[m[0].charCodeAt(0) % 5] + '">' + m[0] + '</span>' + m[1] + '<span class="ck">' + (c.resp.indexOf(m[0]) > -1 ? "✓" : "") + '</span></button>';
+    }).join("") + '<p class="sub" style="margin:6px 8px 4px">O primeiro da lista é o responsável principal.</p>';
+  }
+  var STRIPE = { ok: "var(--ok-dot)", warn: "var(--warn-dot)", bad: "var(--bad-dot)" };
+
+  function renderList() {
+    var cnt = { Controlado: 0, "Atenção": 0, "Crítico": 0 };
+    clients.forEach(function (c) { cnt[c.saude]++; });
+    var tb = [["Todos", clients.length, null], ["Controlado", cnt.Controlado, "var(--ok-dot)"], ["Atenção", cnt["Atenção"], "var(--warn-dot)"], ["Crítico", cnt["Crítico"], "var(--bad-dot)"]];
+    $("toolbar").innerHTML = '<h2>Carteira de clientes</h2>' + tb.map(function (t) {
+      return '<button type="button" class="fchip" data-filter="' + t[0] + '" aria-pressed="' + (filter === t[0]) + '">' + (t[2] ? '<i style="background:' + t[2] + '"></i>' : "") + t[0] + " " + t[1] + "</button>";
+    }).join("");
+    var tot = clients.length || 1;
+    $("bar").innerHTML = '<span style="width:' + cnt.Controlado / tot * 100 + '%;background:var(--ok-dot)"></span><span style="width:' + cnt["Atenção"] / tot * 100 + '%;background:var(--warn-dot)"></span><span style="width:' + cnt["Crítico"] / tot * 100 + '%;background:var(--bad-dot)"></span>';
+    $("rows").innerHTML = clients.filter(function (c) { return filter === "Todos" || c.saude === filter; }).map(function (c) {
+      var k = kind("saude", c.saude);
+      return '<tr tabindex="0" data-row="' + c.id + '" class="' + (k === "bad" ? "crit " : "") + (openId === c.id ? "sel" : "") + '">' +
+        '<td style="--stripe:' + STRIPE[k] + '"><div class="who"><span class="av" style="background:' + AVC[clients.indexOf(c) % 5] + '">' + c.name[0] + '</span><span><span class="nm">' + esc(c.name) + '</span><span class="sub">ID ' + c.id + ' · ' + c.seg + '</span></span></div></td>' +
+        '<td>' + chipBtn(c, "saude") + '</td><td>' + chipBtn(c, "resultado") + '</td><td>' + chipBtn(c, "relac") + '</td><td>' + chipBtn(c, "fin") + '</td>' +
+        '<td class="acao">' + esc(c.acao) + '<br>' + dueHtml(c.prazo) + '</td><td>' + respBtn(c) + '</td></tr>';
+    }).join("");
+  }
+
+  /* ---------- drawer ---------- */
+  function renderStrip(c) {
+    return ["saude", "resultado", "relac", "fin"].map(function (f) { return '<div><label>' + OPTS[f].label + '</label>' + chipBtn(c, f) + '</div>'; }).join("") + '<div><label>Responsável CS</label>' + respBtn(c) + '</div>';
+  }
+  function lastContact(c) { var m = 0; c.notes.forEach(function (n) { if (+n.when > m) m = +n.when; }); return m ? fd(new Date(m)) : "—"; }
+  function renderDrawer() {
+    var c = byId(openId); if (!c) return;
+    var d = $("drawer");
+    d.innerHTML =
+      '<div class="dh"><span class="av" style="background:' + AVC[clients.indexOf(c) % 5] + '">' + c.name[0] + '</span><div><h3>' + esc(c.name) + '</h3><span class="sub" id="dsub">ID ' + c.id + ' · ' + c.seg + ' · CS responsável: ' + c.resp.join(", ") + '</span></div><button class="x" type="button" id="close" aria-label="Fechar ficha">×</button></div>' +
+      '<div class="strip" id="strip">' + renderStrip(c) + '</div>' +
+      '<div class="editnote">Editável pelo CS. Cada alteração registra autor, data e valor anterior no Histórico.</div>' +
+      '<div class="tabs" role="tablist">' +
+      [["resumo", "Resumo", ""], ["notas", "Anotações", '<span class="n">' + c.notes.length + '</span>'], ["hist", "Histórico", ""]].map(function (t) { return '<button class="tab" role="tab" type="button" data-tab="' + t[0] + '" aria-selected="' + (tab === t[0]) + '">' + t[1] + t[2] + '</button>'; }).join("") +
+      '</div><div class="dbody" id="dbody"></div>';
+    renderBody();
+  }
+  function renderBody() {
+    var c = byId(openId); if (!c) return; var b = $("dbody"); if (!b) return;
+    if (tab === "resumo") {
+      b.innerHTML = '<dl class="kv"><dt>Segmento</dt><dd>' + c.seg + '</dd><dt>Responsáveis CS</dt><dd><span class="stack">' + avs(c.resp, "sm") + '</span></dd><dt>Último contato</dt><dd>' + lastContact(c) + '</dd><dt>Próxima ação</dt><dd>' + esc(c.acao) + '</dd><dt>Prazo</dt><dd>' + dueHtml(c.prazo) + '</dd><dt>Anotações</dt><dd>' + c.notes.length + '</dd></dl>';
+    } else if (tab === "hist") {
+      b.innerHTML = c.hist.length ? '<ul class="hist">' + c.hist.map(function (h) { return '<li><div>' + h.text + '<small>' + h.who + ' · ' + fw(h.when) + '</small></div></li>'; }).join("") + '</ul>' :
+        '<p class="sub">Nenhuma alteração registrada ainda. Mude uma flag para ver o histórico aparecer aqui.</p>';
+    } else {
+      var sorted = c.notes.slice().sort(function (a, b) { return (b.pinned - a.pinned) || (b.when - a.when); });
+      b.innerHTML =
+        '<div class="composer"><div class="types" id="types">' + TYPES.map(function (t) { return '<button type="button" class="type" data-type="' + t[0] + '" aria-pressed="' + (draft.tipo === t[0]) + '">' + t[0] + '</button>'; }).join("") + '</div>' +
+        '<textarea id="ntext" placeholder="Escreva uma anotação sobre este cliente..." aria-label="Texto da anotação">' + esc(draft.text) + '</textarea>' +
+        '<div class="two"><input id="nacao" type="text" placeholder="Próxima ação (opcional)" aria-label="Próxima ação" value="' + esc(draft.acao) + '"><input id="nprazo" type="date" aria-label="Prazo" value="' + esc(draft.prazo) + '"></div>' +
+        '<div class="foot"><span class="hintx">Salvar atualiza o último contato e, se preenchida, a próxima ação.</span><button type="button" class="btn primary" id="nsave"' + (draft.text.trim() ? "" : " disabled") + '>Salvar anotação</button></div></div>' +
+        '<div class="tl-head"><h4>Anotações</h4><span>Fixadas e mais recentes primeiro</span></div>' +
+        '<ul class="notes">' + sorted.map(function (n) {
+          var ty = TYPES.filter(function (t) { return t[0] === n.tipo; })[0] || TYPES[1];
+          return '<li class="note"><span class="av sm" style="background:' + AVC[n.au.charCodeAt(0) % 5] + '">' + n.au + '</span><div><div class="meta"><b>' + n.au + '</b><span>' + fw(n.when) + '</span><span class="tag ' + ty[1] + '">' + n.tipo + '</span>' + (n.pinned ? '<span class="tag pin">Fixada</span>' : "") + '<button type="button" class="pinbtn" data-pin="' + n.id + '">' + (n.pinned ? "Desafixar" : "Fixar") + '</button></div><p>' + esc(n.text) + '</p></div></li>';
+        }).join("") + '</ul>';
+    }
+  }
+  function openDrawer(id) {
+    openId = id; tab = "notas"; draft = { tipo: "Reunião ou ligação", text: "", acao: "", prazo: "" };
+    renderDrawer(); renderList();
+    $("drawer").classList.add("on"); $("drawer").setAttribute("aria-hidden", "false"); $("scrim").classList.add("on");
+    var x = $("close"); if (x) x.focus();
+  }
+  function closeDrawer() {
+    openId = null; $("drawer").classList.remove("on"); $("drawer").setAttribute("aria-hidden", "true"); $("scrim").classList.remove("on"); closePop(); renderList();
+  }
+
+  /* ---------- picker ---------- */
+  var pk = null;
+  function closePop() { $("pop").hidden = true; pk = null; }
+  function placePop(btn) {
+    var p = $("pop"), r = btn.getBoundingClientRect(), w = 236;
+    var left = Math.min(Math.max(8, r.left), window.innerWidth - w - 8);
+    var top = r.bottom + 6; if (top + p.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - p.offsetHeight - 6);
+    p.style.left = left + "px"; p.style.top = top + "px";
+  }
+  function openPicker(btn) {
+    var field = btn.getAttribute("data-picker"), id = btn.getAttribute("data-id"), c = byId(id);
+    pk = { field: field, id: id, btn: btn, pending: null };
+    var p = $("pop");
+    p.innerHTML = field === "resp" ? respPopHtml(c) : '<h4>Alterar ' + OPTS[field].label.toLowerCase() + '</h4>' + OPTS[field].list.map(function (o) {
+      return '<button type="button" class="opt" data-val="' + o[0] + '"><span class="d" style="background:var(--' + o[1] + '-dot)"></span>' + o[0] + (c[field] === o[0] ? '<span class="ck">atual</span>' : "") + '</button>';
+    }).join("");
+    p.hidden = false; placePop(btn);
+  }
+  function askWhy(val) {
+    var p = $("pop"); pk.pending = val;
+    p.innerHTML = '<h4>' + OPTS[pk.field].label + ' → ' + val + '</h4><div class="why"><label for="why">Qual o motivo? (curto)</label><textarea id="why" placeholder="Ex.: cliente falou em cancelar"></textarea><div class="row-btns"><button type="button" class="btn" id="whyno">Voltar</button><button type="button" class="btn primary" id="whyok" disabled>Confirmar</button></div></div>';
+    placePop(pk.btn); $("why").focus();
+  }
+  function applyChange(id, field, val, why) {
+    var c = byId(id), old = c[field]; if (old === val) return;
+    c[field] = val;
+    c.hist.unshift({ when: new Date(), who: ME, text: "<b>" + OPTS[field].label + ":</b> " + old + " → " + val + (why ? ". Motivo: " + esc(why) : "") });
+    renderList();
+    if (openId === id) { $("strip").innerHTML = renderStrip(c); if (tab === "hist" || tab === "resumo") renderBody(); }
+    toast(OPTS[field].label + " alterada para " + val);
+  }
+
+  function toggleResp(id, who) {
+    var c = byId(id), old = c.resp.slice(), i = c.resp.indexOf(who);
+    if (i > -1) { if (c.resp.length === 1) { toast("Precisa ter pelo menos um responsável"); return; } c.resp.splice(i, 1); } else c.resp.push(who);
+    c.hist.unshift({ when: new Date(), who: ME, text: "<b>Responsável CS:</b> " + old.join(", ") + " → " + c.resp.join(", ") });
+    renderList();
+    $("pop").innerHTML = respPopHtml(c);
+    if (openId === id) { $("strip").innerHTML = renderStrip(c); var s = $("dsub"); if (s) s.textContent = "ID " + c.id + " · " + c.seg + " · CS responsável: " + c.resp.join(", "); if (tab === "hist" || tab === "resumo") renderBody(); }
+    toast("Responsáveis: " + c.resp.join(", "));
+  }
+
+  /* ---------- events ---------- */
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    var pick = t.closest("[data-picker]");
+    if (pick) { e.stopPropagation(); if (pk && pk.btn === pick && !$("pop").hidden) closePop(); else openPicker(pick); return; }
+    var ropt = t.closest("[data-resp]");
+    if (ropt && pk) { toggleResp(pk.id, ropt.getAttribute("data-resp")); return; }
+    var opt = t.closest(".opt");
+    if (opt && pk) {
+      var v = opt.getAttribute("data-val");
+      applyChange(pk.id, pk.field, v); closePop(); return;
+    }
+    if (t.closest("#pop")) return;
+    if (!$("pop").hidden) closePop();
+    var fc = t.closest("[data-filter]"); if (fc) { filter = fc.getAttribute("data-filter"); renderList(); return; }
+    if (t.id === "close" || t.id === "scrim") { closeDrawer(); return; }
+    var tb = t.closest("[data-tab]"); if (tb) { tab = tb.getAttribute("data-tab"); renderDrawer(); return; }
+    var ty = t.closest("[data-type]"); if (ty) { draft.tipo = ty.getAttribute("data-type"); [].forEach.call(document.querySelectorAll("[data-type]"), function (b) { b.setAttribute("aria-pressed", b === ty); }); return; }
+    var pn = t.closest("[data-pin]"); if (pn) { var c = byId(openId), nn = c.notes.filter(function (n) { return n.id == pn.getAttribute("data-pin"); })[0]; nn.pinned = !nn.pinned; renderBody(); toast(nn.pinned ? "Anotação fixada no topo" : "Anotação desafixada"); return; }
+    if (t.id === "nsave") {
+      var c2 = byId(openId), text = draft.text.trim(); if (!text) return;
+      c2.notes.push(N(ME, new Date(), draft.tipo, text, false));
+      if (draft.acao.trim()) { c2.acao = draft.acao.trim(); if (draft.prazo) { var p = draft.prazo.split("-"); c2.prazo = new Date(+p[0], +p[1] - 1, +p[2], 12); } }
+      draft = { tipo: "Reunião ou ligação", text: "", acao: "", prazo: "" };
+      renderDrawer(); renderList(); toast("Anotação salva. Último contato atualizado.");
+      return;
+    }
+    var row = t.closest("[data-row]"); if (row) openDrawer(row.getAttribute("data-row"));
+  });
+  document.addEventListener("input", function (e) {
+    var t = e.target;
+    if (t.id === "ntext") { draft.text = t.value; var b = $("nsave"); if (b) b.disabled = !t.value.trim(); }
+    else if (t.id === "nacao") draft.acao = t.value;
+    else if (t.id === "nprazo") draft.prazo = t.value;
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { if (!$("pop").hidden) closePop(); else if (openId) closeDrawer(); }
+    if (e.key === "Enter" && e.target.matches && e.target.matches("tr[data-row]")) openDrawer(e.target.getAttribute("data-row"));
+  });
+  window.addEventListener("resize", function () { if (pk) placePop(pk.btn); });
+
+  renderList();
+})();
+</script>
+
+</body>
+</html>
